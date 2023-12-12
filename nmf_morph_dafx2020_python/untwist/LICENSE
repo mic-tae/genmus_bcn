@@ -1,0 +1,50 @@
+Untwist
+------
+
+Copyright (c) 2016, University of Surrey
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+-----
+Other 
+-----
+
+PEASS
+-----
+
+File ./data/csv/emiya_et_al_2011.csv was derived from PEASS-subjdata.mat [1]
+which is made available under the terms of the Creative Commons
+Attribution-NonCommercial-ShareAlike 3.0 license . The author the original mat
+file is Valentin Emiya. Modifications made to the mat file do not reflect the
+work of the original author.
+
+[1] http://bass-db.gforge.inria.fr/peass/PEASS-SubjData.html
+[2] http://creativecommons.org/licenses/by-nc-sa/3.0/
+
+Auditory Toolbox
+----------------
+
+Some mat- (./data/test_data/) and m-files (./untwist/transforms/tests/matlab)
+were derived from version 2 of Malcolm Slaney's Auditory Toolbox which is
+available here: https://engineering.purdue.edu/~malcolm/interval/1998-010/.
+These files are included for unit testing only.
