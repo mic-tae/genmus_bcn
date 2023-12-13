@@ -13,10 +13,10 @@ sr = None
 
 #src = "01.wav"
 #tgt = "02.wav"
-#src = "../01.wav"
-#tgt = "../02.wav"
+#src = "../01_cut.wav"
+#tgt = "../02_cut.wav"
 
-src = "0_120_cut.wav"
-tgt = "1_125_cut.wav"
-#src = "../0_120_cut.wav"
-#tgt = "../1_125_cut.wav"
+#src = "0_120_cut.wav"
+#tgt = "1_125_cut.wav"
+src = "../0_120_cut.wav"
+tgt = "../1_125_cut.wav"
