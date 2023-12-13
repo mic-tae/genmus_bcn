@@ -200,9 +200,11 @@ class Wave(Signal):
 
         #if np.float == self.dtype:
         if float == self.dtype:
+        #if isinstance(self.dtype, float):
 
             if np.max(self) >= 1 or np.min(self) < -1:
                 print("Warning: Signal amplitude exceeds the interval [-1, 1)")
+                print(f"max: {np.max(self)}, min: {np.min(self)}")
 
         sf.write(filename, self, self.sample_rate, desired_dtype)
 

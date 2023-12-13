@@ -16,19 +16,18 @@ start_time = time()
 #src = "../01.wav"
 #tgt = "../02.wav"
 
-#src = "0_120_cut.wav"
-#tgt = "1_125.wav"
-src = "../0_120_cut.wav"
-tgt = "../1_125.wav"
-name = "humpiano"
+src = "0_120_cut.wav"
+tgt = "1_125_cut.wav"
+#src = "../0_120_cut.wav"
+#tgt = "../1_125.wav"
 
 fft_size = 2048
 hop_size = 512
 p = 0.9
 
-print("Loading waves...")
+print("Loading waves...")  # Wave and librosa produce same shape arrays (good)
 proc_time = time()
-s = Wave.read(src).to_mono()  # Wave and librosa produce same shape arrays (good)
+s = Wave.read(src).to_mono()
 t = Wave.read(tgt).to_mono()
 slib, ssr = librosa.load(src, sr=None)
 tlib, tsr = librosa.load(tgt, sr=None)
@@ -41,29 +40,27 @@ print("magnitude processing...")
 proc_time = time()
 S = stft.process(s).magnitude()
 T = stft.process(t).magnitude()
-#Slib = librosa.stft(slib)
-#Tlib = librosa.stft(tlib)
-#Slib = np.abs(Slib)
-#Tlib = np.abs(Tlib)
+#Slib = np.abs( librosa.stft(slib) )
+#Tlib = np.abs( librosa.stft(tlib) )
 print(f"magproc done: {np.round((time()-proc_time)/60, decimals=2)}")
 
 
 # computation of frames we need to morph x seconds
-assert ssr == tsr, "NOOOO THE SAMPLE RATES ARE NOT THE SAME!!!!!!!"
+assert ssr == tsr, "Sample rates of source and target are not equal."
 morph_time = 3  # time in seconds
 morph_meat = np.int16(np.ceil(morph_time / (hop_size / ssr)))  # final number of frames to morph
+print(f"morph time: {morph_time}, frames: {morph_meat}")
 
-
-print("NMFMorph (Wave)")
+print("NMFMorph (Wave)...")
 proc_time = time()
 m = NMFMorph()
-S_morph = S[:, S.shape[1]-morph_meat:]
-T_morph = T[:, :morph_meat]
+S_morph = S[:, S.shape[1]-morph_meat:]  # selects last 3 seconds
+T_morph = T[:, :morph_meat]  # selects first 3 seconds
 m.analyze(S_morph, T_morph, p)
 print(f"NMFMorph done: {np.round((time()-proc_time)/60, decimals=2)}")
 
 """
-print("NMFMorph (librosa)")
+print("NMFMorph (librosa)...")
 proc_time = time()
 m = NMFMorph()
 Slib_morph = Slib[:, S.shape[1]-morph_meat:]
@@ -81,21 +78,44 @@ for f in [0, 0.25, 0.5, 0.75, 0.95, 1]:
 """
 
 print("Morphing...")
+S_lastframe = S.shape[1]-morph_meat
+s_lastsample = S_lastframe*hop_size
+T_firstframe = morph_meat
+t_firstsample = T_firstframe*hop_size
+
 proc_time = time()
-Y = None
-YY = S_morph
+YY = S_morph  # init morph_spectrogram with its final shape: (fft_size/2+1, morph_meat) (the same as S_morph's and T_morph's)
+YYY = s[:s_lastsample]
 interpolation_factors = np.linspace(start=0, stop=1, num=morph_meat)  # goes in morph_meat steps from 0 to 1
 for i, factor in enumerate(interpolation_factors):
-    print(f"i: {i}/{morph_meat}, current morph factor: {factor}")
+    print(f"i: {i+1}/{morph_meat}, factor: {factor}")
     Y = m.interpolate(factor)
-    YY[:, i:] = Y[:, i:]  # only appends the necessary frame (per iteration, start from one frame further)
-print(f"NMFMorph done: {np.round((time()-proc_time)/60, decimals=2)}")
-YY = istft.process(pghi(YY, fft_size, hop_size))
-YY.write("morphed2.wav")
+    YY[:, i:] = Y[:, i:]  # for a non-empty YY: overwrites this frame (each iteration overwrites the next frame)
+    #YY.append(Y[:, i:])  # for an empty YY: appends this frame (each iteration overwrites the next frame) # no, this Spectrogram object doesn't know "append"
+    
+    Y = istft.process(pghi(Y, fft_size, hop_size))
+    YYY = np.append(YYY, Y[i*512:(i+1)*512])
+print(f"Morphing done: {np.round((time()-proc_time)/60, decimals=2)}")
+
+"""
+print("ISTFT on full file...")
+proc_time = time()
+yoog_array = np.append(S[:, :S.shape[1]-morph_meat], YY, axis=1)
+yoog_array = np.append(yoog_array, T[:, morph_meat:], axis=1)
+ready_file_YY = istft.process(pghi(yoog_array, fft_size, hop_size))
+print(f"ISTFT done: {np.round((time()-proc_time)/60, decimals=2)}")
+"""
 
 print("Writing out full file...")
+#ready_file_YY.write("morphed_whole_1.wav")
+
+ready_file_YYY = np.append(YYY, t[t_firstsample:])
+ready_file_YYY.write("morphed_whole_YYY1.wav")
+
+"""
 whole = s.append(YY)
 whole = whole.append(t)
 whole.write("morphed_whole2.wav")
+"""
 
 print(f"Done. Time taken: {np.round((time()-start_time)/60, decimals=2)}")
