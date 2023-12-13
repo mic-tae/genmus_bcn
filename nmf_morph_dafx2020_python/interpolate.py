@@ -1,25 +1,13 @@
 import numpy as np
 from nmf_morph import NMFMorph
 from untwist.untwist.data import Wave
-from untwist.untwist.transforms import STFT, ISTFT
 from rtpghi import pghi
-from time import time
 
+from time import time
 import librosa
 import consts as cnst
+import soundfile as sf
 
-# don't need this class anymore, but keep it for now
-class Consts():
-    def __init__(self):
-        self.fft_size = 2048
-        self.hop_size = 512
-        self.p = 0.9
-        self.stft = STFT(fft_size=self.fft_size, hop_size=self.hop_size)
-        self.istst = ISTFT(fft_size=self.fft_size, hop_size=self.hop_size)
-        self.sr = None
-
-    def set_sr(self, sr):
-        self.sr = sr
 
 
 def calc_time(proc_t):
@@ -27,7 +15,7 @@ def calc_time(proc_t):
 
 
 def load_waves(src, tgt):
-    print("Loading waves...")  # Wave and librosa produce same shape arrays (good)
+    print(f"Loading waves: {src} and {tgt}...")  # Wave and librosa produce same shape arrays (good)
     proc_t = time()
 
     s = Wave.read(src).to_mono()
@@ -37,13 +25,13 @@ def load_waves(src, tgt):
 
     assert ssr == tsr, "Sample rates of source and target are not equal."
     cnst.sr = ssr
-    print(f"Loading waves done: {calc_time(proc_t)}")
+    print(f"Waves loaded. {calc_time(proc_t)}")
 
     return s, t
 
 
 def do_stft(s, t):
-    print("magnitude processing...")
+    print("Getting magnitudes...")
     proc_t = time()
     
     S = cnst.stft.process(s).magnitude()
@@ -51,11 +39,13 @@ def do_stft(s, t):
     #Slib = np.abs( librosa.stft(slib) )
     #Tlib = np.abs( librosa.stft(tlib) )
     
-    print(f"magproc done: {calc_time(proc_t)}")
+    print(f"Magnitudes obtained. {calc_time(proc_t)}")
     return S, T
 
 
 def morph_parameter_calcs(morph_time, S, T):
+    # NOTE !! the beats/frames from beatnet are computed from 22kHz!!
+    
     # computation of frames we need to morph x seconds
     morph_meat = np.int16( np.ceil(morph_time / (cnst.hop_size / cnst.sr)) )  # final number of frames to morph
     print(f"morph time: {morph_time}, frames: {morph_meat}")
@@ -75,21 +65,10 @@ def do_nmf(Sm, Tm):
     m.analyze(Sm, Tm, cnst.p)
 
     print(f"NMFMorph done: {calc_time(proc_t)}")
-
-    """
-    print("NMFMorph (librosa)...")
-    proc_t = time()
-    m = NMFMorph()
-    Slib_morph = Slib[:, S.shape[1]-morph_meat:]
-    Tlib_morph = Tlib[:, :morph_meat]
-    m.analyze(Slib, Tlib, p)
-    print(f"NMFMorph done: {np.round((time()-proc_t)/60, decimals=2)}")
-    """
-
     return m, Sm, Tm
 
 
-def do_morphing(S, Sm, s, m, morph_meat):
+def do_morphing(S, s, m, morph_meat):
     """
     for f in [0, 0.25, 0.5, 0.75, 0.95, 1]:
         print(f"f = {f}")
@@ -104,32 +83,72 @@ def do_morphing(S, Sm, s, m, morph_meat):
     T_firstframe = morph_meat
     t_firstsample = T_firstframe*cnst.hop_size
 
-    YY = Sm  # "init" morph_spectrogram with its final shape: (fft_size/2+1, morph_meat) (the same as S_morph's and T_morph's)
+    YY = np.empty((np.int16(cnst.fft_size/2+1), morph_meat))  # "init" morph_spectrogram with its final shape: (fft_size/2+1, morph_meat) (the same as S_morph's and T_morph's)
     YYY = s[:s_lastsample]
 
     proc_t = time()
     interpolation_factors = np.linspace(start=0, stop=1, num=morph_meat)  # goes in morph_meat steps from 0 to 1
     for i, factor in enumerate(interpolation_factors):
         print(f"i: {i+1}/{morph_meat}, factor: {factor}")
-        Y = m.interpolate(factor)
-        YY[:, i:] = Y[:, i:]  # for a non-empty YY: overwrites this frame (each iter overwrites next frame)
+        Y = m.interpolate(factor)  # "Spectrogram" object, contains magnitudes
+        Y_data = Y.as_ndarray()  # strip away the Spectrogram wrapper
+
+        #YY[:, i:] = Y[:, i:]  # for a non-empty YY: overwrites this frame (each iter overwrites next frame)
+        YY[:, i] = Y_data[:, i]  # for a non-empty YY: overwrites this frame (each iter overwrites next frame)
         #YY.append(Y[:, i:])  # for an empty YY: appends this frame (each iter overwrites next frame)  # no! this Spectrogram object doesn't know "append"
         
-        Y = cnst.istft.process(pghi(Y, cnst.fft_size, cnst.hop_size))  # super slow, same bad result
-        YYY = np.append(YYY, Y[i*512:(i+1)*512])
+        #Y = cnst.istft.process(pghi(Y, cnst.fft_size, cnst.hop_size))  # super slow, same bad result
+        #YYY = np.append(YYY, Y[i*512:(i+1)*512])
 
     print(f"Morphing done: {calc_time(proc_t)}")
     return YY, YYY, t_firstsample
 
 
-"""
-print("ISTFT on full file...")
-proc_t = time()
-yoog_array = np.append(S[:, :S.shape[1]-morph_meat], YY, axis=1)
-yoog_array = np.append(yoog_array, T[:, morph_meat:], axis=1)
-ready_file_YY = istft.process(pghi(yoog_array, fft_size, hop_size))
-print(f"ISTFT done: {np.round((time()-proc_t)/60, decimals=2)}")
-"""
+def do_istft_modded_chunk(YY):
+    print("ISTFT on modded chunk...")
+    proc_t = time()
+    
+    ready_file_YY = librosa.istft(stft_matrix=YY, hop_length=cnst.hop_size, n_fft=cnst.fft_size)
+
+    print(f"ISTFT done: {calc_time(proc_t)}")
+    return ready_file_YY
+
+
+def stitch_file(S, modded_chunk, T):
+    """ 1. Takes the frames of the two input songs, frames were computed by the optimal transport library (from the Wave and Spectrogram objects)
+        2. Cuts the areas of the  songs to where the morph part is
+        3. Converts the frames to samples using librosa.istft """
+    S = S[:, :S.shape[1]-morph_meat]  # song 1: until frame [morph_meat] begins
+    T = T[:, morph_meat:]  # song 2: begins from frame [morph_meat]
+
+    S = S.as_ndarray()
+    T = T.as_ndarray()
+    S_samples = librosa.istft(stft_matrix=S, hop_length=cnst.hop_size, n_fft=cnst.fft_size)
+    T_samples = librosa.istft(stft_matrix=T, hop_length=cnst.hop_size, n_fft=cnst.fft_size)
+    # at this point, Sm & modded_chunk & Tm are all samples
+    
+    ready_file = np.append(S_samples, modded_chunk)
+    ready_file = np.append(ready_file, T_samples)
+
+    return ready_file
+
+
+def write_file_stitched(ready_file):
+    print("Writing file...")
+    sf.write("librosa_test__stitched_new.wav", ready_file, cnst.sr, "PCM_16")
+    print("File written.")
+
+
+def do_istft_fullfile(S, morph_meat, YY, T):
+    print("ISTFT on full file...")
+    proc_t = time()
+
+    yoog_array = np.append(S[:, :S.shape[1]-morph_meat], YY, axis=1)
+    yoog_array = np.append(yoog_array, T[:, morph_meat:], axis=1)
+    ready_file_YY = cnst.istft.process(pghi(yoog_array, cnst.fft_size, cnst.hop_size))
+
+    print(f"ISTFT done: {calc_time(proc_t)}")
+    return ready_file_YY
 
 
 def write_file(YY, YYY, t_firstsample):
@@ -149,7 +168,13 @@ if __name__ == "__main__":
     S, T = do_stft(s, t)
     morph_meat, Sm, Tm = morph_parameter_calcs(3, S, T)  # first parameter: time in seconds
     m, Sm, Tm = do_nmf(Sm, Tm)
-    YY, YYY, t_firstsample = do_morphing(S, Sm, s, m, morph_meat)
-    write_file(YY, YYY, t_firstsample)
+    YY, YYY, t_firstsample = do_morphing(S, s, m, morph_meat)
+
+    #ready_file_YY = do_istft_fullfile(S, morph_meat, YY, T)
+    #write_file(YY, YYY, t_firstsample)
+
+    ready_file_YY = do_istft_modded_chunk(YY)
+    ready_file = stitch_file(S, ready_file_YY, T)
+    write_file_stitched(ready_file)
 
     print(f"Done. Time taken: {calc_time(proc_t)}")
