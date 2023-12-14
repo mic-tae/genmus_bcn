@@ -70,7 +70,7 @@ def calc_morph_parameters(morph_time, S, T):
     Sm = S[:, S.shape[1]-cnst.morph_meat:]  # song 1: last [morph_meat] frames
     Tm = T[:, :cnst.morph_meat]  # song 2: first [morph_meat] frames
 
-    print(f"morph time: {morph_time}, frames: {cnst.morph_meat}")
+    print(f"Morph parameters -- time: {morph_time} seconds, frames: {cnst.morph_meat}")
     return Sm, Tm
 
 
@@ -85,21 +85,15 @@ def do_nmf(Sm, Tm):
     return m
 
 
-def do_morphing(S, s, m):
+def do_morphing(S, m):
     print("Morphing...")
     
-    S_lastframe = S.shape[1]-cnst.morph_meat
-    s_lastsample = S_lastframe*cnst.hop_size
-    T_firstframe = cnst.morph_meat
-    t_firstsample = T_firstframe*cnst.hop_size
-
     # init morphed_chunk 
     if cnst.use_librosa:
         morphed_chunk = np.empty((np.int16(cnst.fft_size/2+1), cnst.morph_meat))  # "init" with final shape (fft_size/2+1, morph_meat) (the same as S_morph's and T_morph's)
     else:
         morphed_chunk = S[:, :cnst.morph_meat].copy()  # copy important! "init" Spectrogram object with final shape (fft_size/2+1, morph_meat)
     print(f"morphed_chunk initialized, shape: {morphed_chunk.shape}")
-    YYY = s[:s_lastsample]  # for sample based approach
 
     proc_t = time()
     morph_factors = np.linspace(start=0, stop=1, num=cnst.morph_meat+2)  # +2 because we are going to remove [0] and [-1] for they are 0 and 1.
@@ -113,13 +107,9 @@ def do_morphing(S, s, m):
             morphed_chunk[:, i] = Y_data[:, i]  # overwrites this frame (each iter overwrites next frame)
         else:
             morphed_chunk[:, i] = Y[:, i]
-        
-        # sample based approach. not so great
-        #Y = cnst.istft.process(pghi(Y, cnst.fft_size, cnst.hop_size))  # super slow, same bad result
-        #YYY = np.append(YYY, Y[i*512:(i+1)*512])
 
     print(f"Morphing done: {calc_time(proc_t)}")
-    return morphed_chunk, YYY, t_firstsample
+    return morphed_chunk
 
 
 def do_istft_morphed_chunk(morphed_chunk):
@@ -177,56 +167,6 @@ def write_file(samples, filename):
     print("File written.")
 
 
-######## unused ########
-def do_istft(S, modded_chunk, T, morph_meat):
-    """ takes a spectrogram object / spectrogram matrix, converts it to samples, returns samples """
-    print("ISTFTs...")
-    proc_t = time()
-    
-    # select the song parts that aren't modded/morphed
-    S = S[:, :S.shape[1]-morph_meat]  # song 1: goes until frame [morph_meat]
-    T = T[:, morph_meat:]  # song 2: begins from frame [morph_meat]
-
-    # this block for Optimal Transport library
-    S_samples = cnst.istft.process(pghi(S, cnst.fft_size, cnst.hop_size))
-    modded_chunk = cnst.istft.process(pghi(modded_chunk, cnst.fft_size, cnst.hop_size))
-    T_samples = cnst.istft.process(pghi(T, cnst.fft_size, cnst.hop_size))
-
-    # this block for librosa
-    S = S.as_ndarray()
-    modded_chunk = modded_chunk.as_ndarray()
-    T = T.as_ndarray()
-    S_samples = librosa.istft(stft_matrix=S, hop_length=cnst.hop_size, n_fft=cnst.fft_size)
-    modded_chunk = librosa.istft(stft_matrix=modded_chunk, hop_length=cnst.hop_size, n_fft=cnst.fft_size)
-    T_samples = librosa.istft(stft_matrix=T, hop_length=cnst.hop_size, n_fft=cnst.fft_size)
-
-    print(f"ISTFTs done: {calc_time(proc_t)}")
-    return S_samples, modded_chunk, T_samples
-
-
-def do_istft_fullfile(S, morph_meat, YY, T):
-    print("ISTFT on full file...")
-    proc_t = time()
-
-    yoog_array = np.append(S[:, :S.shape[1]-morph_meat], YY, axis=1)
-    yoog_array = np.append(yoog_array, T[:, morph_meat:], axis=1)
-    ready_file_YY = cnst.istft.process(pghi(yoog_array, cnst.fft_size, cnst.hop_size))
-
-    print(f"ISTFT done: {calc_time(proc_t)}")
-    return ready_file_YY
-
-
-def write_file2(YY, YYY, t_firstsample):
-    print("Writing out full file...")
-    # file based on appending frames
-    #ready_file_YY.write("morphed_whole_1.wav")
-
-    # file based on appending samples 
-    ready_file_YYY = np.append(YYY, t[t_firstsample:])
-    ready_file_YYY.write("morphed_whole_YYY1.wav")
-################
-
-
 def main():
     proc_t = time()
 
@@ -235,11 +175,7 @@ def main():
     S, T = do_stft(s, t)
     Sm, Tm = calc_morph_parameters(3, S, T)  # first parameter: time in seconds
     m = do_nmf(Sm, Tm)
-    morphed_chunk, YYY, t_firstsample = do_morphing(S, s, m)
-
-    #ready_file_YY = do_istft_fullfile(S, morph_meat, YY, T)
-    #write_file(YY, YYY, t_firstsample)
-
+    morphed_chunk = do_morphing(S, m)
     morphed_chunk_samples = do_istft_morphed_chunk(morphed_chunk)
     write_file(morphed_chunk_samples, f"{cnst.outfile}_morphed_chunk.wav")
 
