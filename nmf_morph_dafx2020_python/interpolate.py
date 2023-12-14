@@ -162,7 +162,7 @@ def stitch_file(S, morphed_chunk_samples, T):
 
 
 def write_file(samples, filename):
-    print("Writing file...")
+    print(f"Writing {filename}...")
     sf.write(filename, samples, cnst.sr, "PCM_16")
     print("File written.")
 
