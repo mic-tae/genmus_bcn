@@ -102,8 +102,9 @@ def do_morphing(S, s, m):
     YYY = s[:s_lastsample]  # for sample based approach
 
     proc_t = time()
-    interpolation_factors = np.linspace(start=0, stop=1, num=cnst.morph_meat)  # goes in morph_meat steps from 0 to 1
-    for i, factor in enumerate(interpolation_factors):
+    morph_factors = np.linspace(start=0, stop=1, num=cnst.morph_meat+2)  # +2 because we are going to remove [0] and [-1] for they are 0 and 1.
+    morph_factors = np.delete(np.delete(morph_factors, 0), -1)
+    for i, factor in enumerate(morph_factors):
         print(f"i: {i+1}/{cnst.morph_meat}, factor: {factor}")
         Y = m.interpolate(factor)  # "Spectrogram" object with mags
 
