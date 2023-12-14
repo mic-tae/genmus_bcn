@@ -11,12 +11,12 @@ import soundfile as sf
 
 
 def calc_time(proc_t):
-   return np.round((time()-proc_t)/60, decimals=2)
+    return np.round((time()-proc_t)/60, decimals=2)
 
 
-def resample_song(filename):
-    cnst.sr = 44100
-    tlib, tsr = librosa.load(filename, sr=44100)
+def resample_song(filename, sr):
+    cnst.sr = sr
+    tlib, tsr = librosa.load(filename, sr=cnst.sr)
     write_file(tlib, f"{filename.replace('.wav', '_resampled.wav')}")
 
 
@@ -93,12 +93,12 @@ def do_morphing(S, s, m):
     T_firstframe = cnst.morph_meat
     t_firstsample = T_firstframe*cnst.hop_size
 
-    # YY and YYY are the modded chunks
+    # init morphed_chunk 
     if cnst.use_librosa:
-        YY = np.empty((np.int16(cnst.fft_size/2+1), cnst.morph_meat))  # "init" with final shape (fft_size/2+1, morph_meat) (the same as S_morph's and T_morph's)
+        morphed_chunk = np.empty((np.int16(cnst.fft_size/2+1), cnst.morph_meat))  # "init" with final shape (fft_size/2+1, morph_meat) (the same as S_morph's and T_morph's)
     else:
-        YY = S[:, :cnst.morph_meat]  # "init" Spectrogram object with final shape (fft_size/2+1, morph_meat)
-    print(f"YY initialized with shape: {YY.shape}")
+        morphed_chunk = S[:, :cnst.morph_meat].copy()  # copy important! "init" Spectrogram object with final shape (fft_size/2+1, morph_meat)
+    print(f"morphed_chunk initialized, shape: {morphed_chunk.shape}")
     YYY = s[:s_lastsample]  # for sample based approach
 
     proc_t = time()
@@ -109,43 +109,47 @@ def do_morphing(S, s, m):
 
         if cnst.use_librosa:
             Y_data = Y.as_ndarray()  # strips the Spectrogram wrapper
-            YY[:, i] = Y_data[:, i]  # overwrites this frame (each iter overwrites next frame)
+            morphed_chunk[:, i] = Y_data[:, i]  # overwrites this frame (each iter overwrites next frame)
         else:
-            YY[:, i] = Y[:, i]
+            morphed_chunk[:, i] = Y[:, i]
         
         # sample based approach. not so great
         #Y = cnst.istft.process(pghi(Y, cnst.fft_size, cnst.hop_size))  # super slow, same bad result
         #YYY = np.append(YYY, Y[i*512:(i+1)*512])
 
     print(f"Morphing done: {calc_time(proc_t)}")
-    return YY, YYY, t_firstsample
+    return morphed_chunk, YYY, t_firstsample
 
 
-def do_istft_modded_chunk(modded_chunk):
+def do_istft_morphed_chunk(morphed_chunk):
     """ takes a spectrogram object / spectrogram matrix, converts it to samples, returns samples """
-    print("ISTFT on modded chunk...")
+    print("ISTFT on morphed chunk...")
     proc_t = time()
 
     if cnst.use_librosa:
-        modded_chunk = modded_chunk.as_ndarray()
-        modded_chunk_samples = librosa.istft(stft_matrix=modded_chunk, hop_length=cnst.hop_size, n_fft=cnst.fft_size)
+        morphed_chunk = morphed_chunk.as_ndarray()
+        morphed_chunk_samples = librosa.istft(stft_matrix=morphed_chunk, hop_length=cnst.hop_size, n_fft=cnst.fft_size)
     else:
-        modded_chunk_samples = cnst.istft.process(pghi(modded_chunk, cnst.fft_size, cnst.hop_size))
-        modded_chunk_samples = modded_chunk_samples.normalize()
+        morphed_chunk_samples = cnst.istft.process(pghi(morphed_chunk, cnst.fft_size, cnst.hop_size))
+        morphed_chunk_samples = morphed_chunk_samples.normalize()
 
     print(f"ISTFT done: {calc_time(proc_t)}")
-    return modded_chunk_samples
+    return morphed_chunk_samples
 
 
 def stitch_file(S, morphed_chunk_samples, T):
-    """ This is mainly for testing purposes -- to see the modded chunk in its original context.
+    """ This is mainly for testing purposes -- to see the morphed chunk in its original context.
 
-        1. Takes the frames of the two input songs, frames were computed by the optimal transport library (from the Wave and Spectrogram objects)
+        1. Takes the frames of the two input songs
         2. Cuts the areas of the songs to where the morph part is
-        3. Converts the frames to samples using librosa.istft
+        3. Converts the frames to samples
+        4. Stitches the chopped sample blocks back together
     
         ### Note: morphed_chunk_samples is already SAMPLES and doesn't need to be ISTFT'd ###
     """
+    print("Stitching blocks...")
+    proc_t = time()
+
     S = S[:, :S.shape[1]-cnst.morph_meat]  # song 1: until frame [morph_meat] begins
     T = T[:, cnst.morph_meat:]  # song 2: begins from frame [morph_meat]
 
@@ -162,6 +166,7 @@ def stitch_file(S, morphed_chunk_samples, T):
         ready_file = np.append(S_samples, morphed_chunk_samples, axis=0)
         ready_file = np.append(ready_file, T_samples, axis=0)
 
+    print(f"Stitching done: {calc_time(proc_t)}")
     return ready_file
 
 
@@ -229,19 +234,19 @@ def main():
     S, T = do_stft(s, t)
     Sm, Tm = calc_morph_parameters(3, S, T)  # first parameter: time in seconds
     m = do_nmf(Sm, Tm)
-    YY, YYY, t_firstsample = do_morphing(S, s, m)
+    morphed_chunk, YYY, t_firstsample = do_morphing(S, s, m)
 
     #ready_file_YY = do_istft_fullfile(S, morph_meat, YY, T)
     #write_file(YY, YYY, t_firstsample)
 
-    morphed_chunk_samples = do_istft_modded_chunk(YY)
-    write_file(morphed_chunk_samples, "morphed_chunk.wav")
+    morphed_chunk_samples = do_istft_morphed_chunk(morphed_chunk)
+    write_file(morphed_chunk_samples, f"{cnst.outfile}_morphed_chunk.wav")
 
     ## this is mainly for testing purposes - to see the modded chunk in its original context
     ready_file = stitch_file(S, morphed_chunk_samples, T)
-    write_file(ready_file, "morphed_full.wav")
+    write_file(ready_file, f"{cnst.outfile}_morphed_full.wav")
 
-    print(f"Done. Time taken: {calc_time(proc_t)}")
+    print(f"All done: {calc_time(proc_t)}")
 
 
 if __name__ == "__main__":

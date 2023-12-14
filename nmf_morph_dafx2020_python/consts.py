@@ -14,18 +14,14 @@ sr = None
 morph_meat = None
 
 
-#src = "01.wav"
-#tgt = "02.wav"
-#src = "../01_cut.wav"
-#tgt = "../02_cut.wav"
+#src = "../audio/01_cut.wav"
+#tgt = "../audio/02_cut.wav"
+#outfile = "../audio/0102cut"
 
-#src = "0_120_cut.wav"
-#tgt = "1_125_cut.wav"
-#src = "../0_120_cut.wav"
-#tgt = "../1_125_cut.wav"
+src = "../audio/0_120_cut.wav"
+tgt = "../audio/1_125_cut.wav"
+outfile = "../audio/120125cut"
 
-
-#src = "00piano_cut.wav"
-#tgt = "01trumpet_cut.wav"
-src = "../00piano_cut.wav"
-tgt = "../01trumpet_cut_resampled.wav"
+#src = "../audio/00piano_cut.wav"
+#tgt = "../audio/01trumpet_cut_resampled.wav"
+#outfile = "../audio/0001_cut"
