@@ -158,5 +158,6 @@ if __name__ == "__main__":
     parser.add_argument('--save_path', type=str, help='Path where to save concatenated song', default="test/concatenated_song.wav")
     parser.add_argument('--verbose', type=bool, help='Whether to print the output', default=False)
     args = parser.parse_args()
-    bpm_list = song_concatenation(args.first_song, args.second_song, args.save_path, args.verbose)
+    print("Concatenating...")
+    song_concatenation(args.first_song, args.second_song, args.save_path, args.verbose)
     print("Song concatenated successfully!")
