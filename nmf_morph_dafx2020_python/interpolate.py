@@ -1,12 +1,12 @@
-import numpy as np
 from nmf_morph import NMFMorph
 from untwist.untwist.data import Wave
 from rtpghi import pghi
 
-from time import time
-import librosa
 import consts as cnst
+import librosa
+import numpy as np
 import soundfile as sf
+from time import time
 
 
 
@@ -14,10 +14,12 @@ def calc_time(proc_t):
     return np.round((time()-proc_t)/60, decimals=2)
 
 
+
 def resample_song(filename, sr):
     cnst.sr = sr
     tlib, tsr = librosa.load(filename, sr=cnst.sr)
     write_file(tlib, f"{filename.replace('.wav', '_resampled.wav')}")
+
 
 
 def load_waves(src, tgt):
@@ -41,9 +43,11 @@ def load_waves(src, tgt):
     return s, t
 
 
+
 def get_max_amplitudes(s, t):
     cnst.amp_s_max = np.max(s)
     cnst.amp_t_max = np.max(t)
+
 
 
 def do_stft(s, t):
@@ -61,6 +65,7 @@ def do_stft(s, t):
     return S, T
 
 
+
 def calc_morph_parameters(morph_time, S, T):
     # NOTE !! the beats/frames from beatnet are computed from 22kHz!!
     
@@ -74,6 +79,7 @@ def calc_morph_parameters(morph_time, S, T):
     return Sm, Tm
 
 
+
 def do_nmf(Sm, Tm):
     print("NMFMorph (Wave)...")
     proc_t = time()
@@ -83,6 +89,7 @@ def do_nmf(Sm, Tm):
 
     print(f"NMFMorph done: {calc_time(proc_t)}")
     return m
+
 
 
 def do_morphing(S, m):
@@ -112,6 +119,7 @@ def do_morphing(S, m):
     return morphed_chunk
 
 
+
 def do_istft_morphed_chunk(morphed_chunk):
     """ takes a spectrogram object / spectrogram matrix, converts it to samples, returns samples """
     print("ISTFT on morphed chunk...")
@@ -126,6 +134,7 @@ def do_istft_morphed_chunk(morphed_chunk):
 
     print(f"ISTFT done: {calc_time(proc_t)}")
     return morphed_chunk_samples
+
 
 
 def stitch_file(S, morphed_chunk_samples, T):
@@ -161,10 +170,12 @@ def stitch_file(S, morphed_chunk_samples, T):
     return ready_file
 
 
+
 def write_file(samples, filename):
     print(f"Writing {filename}...")
     sf.write(filename, samples, cnst.sr, "PCM_16")
     print("File written.")
+
 
 
 def main():
@@ -184,6 +195,7 @@ def main():
     write_file(ready_file, f"{cnst.outfile}_morphed_full.wav")
 
     print(f"All done: {calc_time(proc_t)}")
+
 
 
 if __name__ == "__main__":
