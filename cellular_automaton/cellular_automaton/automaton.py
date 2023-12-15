@@ -16,11 +16,12 @@ limitations under the License.
 
 from typing import Sequence
 
+import numpy as np
 import abc
 import itertools
 import recordclass
 
-from cellular_automaton import Neighborhood
+from . import Neighborhood
 
 
 CELL = recordclass.make_dataclass("Cell",
@@ -39,6 +40,10 @@ class CellularAutomatonCreator(abc.ABC):
         self._dimension = dimension
         self._neighborhood = neighborhood
 
+        self.d_norm = None
+        self.d_thresh = 0.4  # empirically defined
+        self.init_array = None
+
         self._current_state = {}
         self._next_state = {}
         self.__make_cellular_automaton_state()
@@ -49,8 +54,29 @@ class CellularAutomatonCreator(abc.ABC):
     dimension = property(get_dimension)
 
     def __make_cellular_automaton_state(self):
+        self.__load_audio()
+        self.__create_array()
         self.__make_cells()
         self.__add_neighbors()
+
+    def __load_audio(self):
+        import librosa
+        
+        samples, sr = librosa.load("/home/micha/projects/genmus_bcn/cellular_automaton/examples/morphed_chunk.wav", sr=None)
+        d_stft = np.abs(librosa.stft(samples))
+        d_vec = np.sum(d_stft, axis=0)  # vec indices = frames, each frame contains the sum of that STFT's column's amplitudes
+
+        self.d_norm = d_vec/np.max(d_vec)
+
+    def __create_array(self):
+        amount = len(np.where(self.d_norm > self.d_thresh)[0])
+        print(f"got {amount} ones")
+
+        array_2d = np.zeros((self._dimension))
+        random_indices = np.random.choice(100*100, amount, replace=False)
+        array_2d.flat[random_indices] = 1
+
+        self.init_array = array_2d
 
     def __make_cells(self):
         # cartesian product for (1, 2) and (a, b): (1, a), (1, b), (2, a), (2, b), so this goes cell by cell through the grid
