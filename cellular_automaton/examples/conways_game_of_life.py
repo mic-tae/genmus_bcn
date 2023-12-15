@@ -65,4 +65,4 @@ class ConwaysCA(CellularAutomaton):
 
 if __name__ == "__main__":
     CAWindow(cellular_automaton=ConwaysCA(),
-             window_size=(1000, 830)).run(evolutions_per_second=40)
+             window_size=(1000, 830)).run(evolutions_per_second=2)

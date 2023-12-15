@@ -16,6 +16,7 @@ limitations under the License.
 
 # pylint: disable=all
 
+import datetime
 import time
 import operator
 import collections
@@ -114,6 +115,8 @@ class CAWindow:
         if evolutions_per_second > 0:
             rest_time = 1.0 / evolutions_per_second - time_taken
             if rest_time > 0:
+                screenshot_filename = f"screenshot_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.png"
+                #self.__draw_engine._pygame.image.save( self.__draw_engine._pygame.display.get_surface(), screenshot_filename )
                 time.sleep(rest_time)
 
     def _not_at_the_end(self, last_evolution_step):
@@ -158,10 +161,11 @@ class CAWindow:
         return self.__draw_engine.fill_surface_with_color((surface_pos, self.__cell_size), cell_color)
 
     def print_process_info(self, evolve_duration, draw_duration, evolution_step):
-        self.__draw_engine.fill_surface_with_color(((0, 0), (self.__rect.width, 30)))
-        self.__draw_engine.write_text((10, 5), "CA: " + "{0:.4f}".format(evolve_duration) + "s")
-        self.__draw_engine.write_text((310, 5), "Display: " + "{0:.4f}".format(draw_duration) + "s")
-        self.__draw_engine.write_text((660, 5), "Step: " + str(evolution_step))
+        #self.__draw_engine.fill_surface_with_color(((0, 0), (self.__rect.width, 30)))
+        #self.__draw_engine.write_text((10, 5), "CA: " + "{0:.4f}".format(evolve_duration) + "s")
+        #self.__draw_engine.write_text((310, 5), "Display: " + "{0:.4f}".format(draw_duration) + "s")
+        #self.__draw_engine.write_text((660, 5), "Step: " + str(evolution_step))
+        0
 
     def _is_not_user_terminated(self):
         return self.__draw_engine.is_active()

@@ -53,6 +53,7 @@ class CellularAutomatonCreator(abc.ABC):
         self.__add_neighbors()
 
     def __make_cells(self):
+        # cartesian product for (1, 2) and (a, b): (1, a), (1, b), (2, a), (2, b), so this goes cell by cell through the grid
         for coord in itertools.product(*[range(d) for d in self._dimension]):
             cell_state = self.init_cell_state(coord)
             self._current_state[coord] = CELL(cell_state)
