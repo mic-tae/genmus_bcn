@@ -11,7 +11,9 @@ from time import time
 import librosa
 import argparse
 
-def stitch_file_time(s, morphed_chunk_samples, t, first_cut, second_cut):
+
+
+def stitch_file_time(s, morphed_chunk_samples, t):
     """ This is mainly for testing purposes -- to see the morphed chunk in its original context.
 
         1. Takes the frames of the two input songs
@@ -24,10 +26,6 @@ def stitch_file_time(s, morphed_chunk_samples, t, first_cut, second_cut):
     print("Stitching blocks...")
     proc_t = time()
     
-
-    s = s[:first_cut,:]  # song 1: until sample [last_beat_sample] begins
-    t = t[second_cut:,:]  # song 2: begins from sample [first_beat_sample] until the end
-
     # if cnst.use_librosa:
     #    S = S.as_ndarray()
     #    T = T.as_ndarray()
@@ -40,13 +38,14 @@ def stitch_file_time(s, morphed_chunk_samples, t, first_cut, second_cut):
     #    T_samples = cnst.istft.process(pghi(T, cnst.fft_size, cnst.hop_size))
     #    ready_file = np.append(S_samples, morphed_chunk_samples, axis=0)
     #    ready_file = np.append(ready_file, T_samples, axis=0)
-    s = s.as_ndarray()
-    t = t.as_ndarray()
+
     morphed_chunk_samples = morphed_chunk_samples.as_ndarray()
     ready_file = np.concatenate([s, morphed_chunk_samples])
     ready_file = np.concatenate([ready_file, t])
     print(f"Stitching done: {calc_time(proc_t)}")
     return ready_file
+
+
 
 def morphing_two_songs(source, target, outfile, concatenator, sample_rate=44100):
     proc_t = time()
@@ -90,16 +89,23 @@ def morphing_two_songs(source, target, outfile, concatenator, sample_rate=44100)
     ## this is mainly for testing purposes - to see the modded chunk in its original context
     first_cut = int(last_beat[0]*cnst.sr)
     second_cut = int(first_beat[0]*cnst.sr)
-    ready_file = stitch_file_time(s, morphed_chunk_samples, t, first_cut, second_cut)
+    s = s.as_ndarray()
+    t = t.as_ndarray()
+    s = s[:first_cut]  # song 1: until sample [last_beat_sample] begins
+    t = t[second_cut:]  # song 2: begins from sample [first_beat_sample] until the end
+
+    ready_file = stitch_file_time(s, morphed_chunk_samples, t)
     write_file(ready_file, f"{cnst.outfile}_morphed_full.wav")
     sf.write("../audio/test/test_concatenated_song.wav", concantenated_song, sr, "PCM_16")
-
+    
     print(f"All done: {calc_time(proc_t)}")
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="BPM calculator script")
-    parser.add_argument('--first_song', type=str, help='Path to the first song', default="../audio/test/house120.mp3")
-    parser.add_argument('--second_song', type=str, help='Path to the second song', default="../audio/test/lofi70.mp3")
+    parser.add_argument('--first_song', type=str, help='Path to the first song', default=cnst.src)
+    parser.add_argument('--second_song', type=str, help='Path to the second song', default=cnst.tgt)
     parser.add_argument('--save_path', type=str, help='Path where to save concatenated song', default="test")
     args = parser.parse_args()
     
@@ -109,4 +115,3 @@ if __name__ == "__main__":
     print(f"Morphing two songs...")
     morphing_two_songs(source=args.first_song, target=args.second_song, outfile=args.save_path, concatenator=song_concatenator, sample_rate=44100)
     print("Songs morphed and concatenated successfully!")
-

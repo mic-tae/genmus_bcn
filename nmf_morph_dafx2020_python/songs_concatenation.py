@@ -11,7 +11,8 @@ from BeatNet.log_spect import LOG_SPECT
 import soundfile as sf
 import argparse
 
-BEATNET_PATH = "/home/greg/Workshop-Generative-AI/genmus_bcn/nmf_morph_dafx2020_python/BeatNet"
+#BEATNET_PATH = "/home/greg/Workshop-Generative-AI/genmus_bcn/nmf_morph_dafx2020_python/BeatNet"
+BEATNET_PATH = "/home/micha/projects/genmus_bcn/nmf_morph_dafx2020_python/BeatNet"
 
 class Beat_detector:
     
@@ -150,10 +151,10 @@ def song_concatenation(file1, file2, save_path=None, verbose=False):
         plt.title("Concatenated song")
         plt.show()
 
-
+"""
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="BPM calculator script")
-    parser.add_argument('--first_song', type=str, help='Path to the first song', default="test/house120.mp3")
+    parser.add_argument('--first_song', type=str, help='Path to the first song', default=f"{cnst.src}")
     parser.add_argument('--second_song', type=str, help='Path to the second song', default="test/2house120.mp3")
     parser.add_argument('--save_path', type=str, help='Path where to save concatenated song', default="test/concatenated_song.wav")
     parser.add_argument('--verbose', type=bool, help='Whether to print the output', default=False)
@@ -161,3 +162,4 @@ if __name__ == "__main__":
     print("Concatenating...")
     song_concatenation(args.first_song, args.second_song, args.save_path, args.verbose)
     print("Song concatenated successfully!")
+"""

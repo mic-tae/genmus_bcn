@@ -72,11 +72,32 @@ def calc_morph_parameters(morph_time, S, T):
     cnst.morph_meat = np.int16( np.ceil(morph_time / (cnst.hop_size / cnst.sr)) )  # computes num of frames we need to morph [morph_tine] seconds
 
     # select song chunks for morphing
-    Sm = S[:, S.shape[1]-cnst.morph_meat:]  # song 1: last [morph_meat] frames
-    Tm = T[:, :cnst.morph_meat]  # song 2: first [morph_meat] frames
+    Sm = S[:, S.shape[1]-cnst.morph_meat:].copy()  # song 1: last [morph_meat] frames
+    Tm = T[:, :cnst.morph_meat].copy()  # song 2: first [morph_meat] frames
+
+    # normalize EACH FRAME (because we had troubles when song 1 had a fade-out)
+    for i in range(Sm.shape[1]):
+        Sm[:, i] = Sm[:, i]/np.max(Sm[:, i])
+    for i in range(Tm.shape[1]):
+        Tm[:, i] = Tm[:, i]/np.max(Tm[:, i])
 
     print(f"Morph parameters -- time: {morph_time} seconds, frames: {cnst.morph_meat}")
     return Sm, Tm
+
+
+
+def logistic_window(frame_positions, x0=0.5):
+    """
+    Compute the coefficients for a logistic window function.
+
+    Parameters:
+    - frame_positions: An array of normalized frame positions (between 0 and 1).
+    - x0: Midpoint parameter for the logistic function.
+
+    Returns:
+    - Array of coefficients for the window function.
+    """
+    return 1 / (1 + np.exp(-(frame_positions - x0)))
 
 
 
@@ -103,14 +124,16 @@ def do_morphing(S, m):
     print(f"morphed_chunk initialized, shape: {morphed_chunk.shape}")
 
     proc_t = time()
-    morph_factors = np.linspace(start=0, stop=1, num=cnst.morph_meat+2)  # +2 because we are going to remove [0] and [-1] for they are 0 and 1.
-    morph_factors = np.delete(np.delete(morph_factors, 0), -1)
+    morph_factors = np.linspace(start=0, stop=1, num=cnst.morph_meat)  # +2 because we are going to remove [0] and [-1] for they are 0 and 1.
+    #morph_factors = np.delete(np.delete(morph_factors, 0), -1)
+    morph_factors = 1 / (1 + np.exp(-10 * (morph_factors - 0.5)))
     for i, factor in enumerate(morph_factors):
         print(f"i: {i+1}/{cnst.morph_meat}, factor: {factor}")
         Y = m.interpolate(factor)  # "Spectrogram" object with mags
 
         if cnst.use_librosa:
             Y_data = Y.as_ndarray()  # strips the Spectrogram wrapper
+            Y_data[:, i] = Y_data
             morphed_chunk[:, i] = Y_data[:, i]  # overwrites this frame (each iter overwrites next frame)
         else:
             morphed_chunk[:, i] = Y[:, i]
