@@ -107,6 +107,7 @@ def do_nmf(Sm, Tm):
 
     m = NMFMorph()
     m.analyze(Sm, Tm, cnst.p)
+    print(f"NMF: W: {m.W.shape}, H: {m.H.shape}, rank: {m.rank}")
 
     print(f"NMFMorph done: {calc_time(proc_t)}")
     return m
@@ -115,28 +116,34 @@ def do_nmf(Sm, Tm):
 
 def do_morphing(S, m):
     print("Morphing...")
-    
-    # init morphed_chunk 
-    if cnst.use_librosa:
-        morphed_chunk = np.empty((np.int16(cnst.fft_size/2+1), cnst.morph_meat))  # "init" with final shape (fft_size/2+1, morph_meat) (the same as S_morph's and T_morph's)
-    else:
-        morphed_chunk = S[:, :cnst.morph_meat].copy()  # copy important! "init" Spectrogram object with final shape (fft_size/2+1, morph_meat)
-    print(f"morphed_chunk initialized, shape: {morphed_chunk.shape}")
 
-    proc_t = time()
     morph_factors = np.linspace(start=0, stop=1, num=cnst.morph_meat)  # +2 because we are going to remove [0] and [-1] for they are 0 and 1.
     #morph_factors = np.delete(np.delete(morph_factors, 0), -1)
     morph_factors = 1 / (1 + np.exp(-10 * (morph_factors - 0.5)))
+    
+    # option 1
+    proc_t = time()
+    morphed_chunk = m.smooth_fade(morph_factors)
+    print(f"Morphing done: {calc_time(proc_t)}")
+
+    # option 2
+    # init morphed_chunk 
+    proc_t = time()
+    if cnst.use_librosa:
+        morphed_chunk = np.empty((np.int16(cnst.fft_size/2+1), cnst.morph_meat))  # "init" with final shape (fft_size/2+1, morph_meat) (the same as S_morph's and T_morph's)
+    else:
+        # TODO just use np.zeros_like(S) here... ah no, we only take :morph_meat
+        morphed_chunk = S[:, :cnst.morph_meat].copy()  # copy important! "init" Spectrogram object with final shape (fft_size/2+1, morph_meat)
+    print(f"morphed_chunk initialized, shape: {morphed_chunk.shape}")
+
     for i, factor in enumerate(morph_factors):
         print(f"i: {i+1}/{cnst.morph_meat}, factor: {factor}")
-        Y = m.interpolate(factor)  # "Spectrogram" object with mags
+        V = m.interpolate(factor)  # "Spectrogram" object with mags
 
         if cnst.use_librosa:
-            Y_data = Y.as_ndarray()  # strips the Spectrogram wrapper
-            Y_data[:, i] = Y_data
-            morphed_chunk[:, i] = Y_data[:, i]  # overwrites this frame (each iter overwrites next frame)
-        else:
-            morphed_chunk[:, i] = Y[:, i]
+            V = V.as_ndarray()  # strip the Spectrogram wrapper
+
+        morphed_chunk[:, i] = V[:, i]  # overwrite this frame (each iter overwrites next frame)
 
     print(f"Morphing done: {calc_time(proc_t)}")
     return morphed_chunk
