@@ -8,8 +8,9 @@ from madmom.features import DBNDownBeatTrackingProcessor
 from BeatNet.particle_filtering_cascade import particle_filter_cascade
 from BeatNet.log_spect import LOG_SPECT
 
-import soundfile as sf
 import argparse
+import consts as cnst
+import soundfile as sf
 
 #BEATNET_PATH = "/home/greg/Workshop-Generative-AI/genmus_bcn/nmf_morph_dafx2020_python/BeatNet"
 BEATNET_PATH = "/home/micha/projects/genmus_bcn/nmf_morph_dafx2020_python/BeatNet"
@@ -107,7 +108,7 @@ def song_concatenation(file1, file2, save_path=None, verbose=False):
     audio2, _ = librosa.load(file2)
           
     beatnet = Beat_detector(1, BEATNET_PATH, "offline", 'DBN', sample_rate=sr)
-    song_concatenator = Song_concatenator(beatnet, 3)
+    song_concatenator = Song_concatenator(beatnet, cnst.morph_time)
     
     concatenated_song, last_beat, first_beat = song_concatenator.concatenate(audio1, audio2, sr)
         

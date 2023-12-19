@@ -82,7 +82,8 @@ def morphing_two_songs(source, target, outfile, concatenator, sample_rate=44100)
     # Morphing
     Sm, Tm = calc_morph_parameters(morph_time, S, T)  # first parameter: time in seconds
     m = do_nmf(Sm, Tm)
-    morphed_chunk = do_morphing(S, m)
+    morph_factors = get_morph_factors()
+    morphed_chunk = do_morphing(morph_factors, m, S)
     morphed_chunk_samples = do_istft_morphed_chunk(morphed_chunk)
     write_file(morphed_chunk_samples, f"{cnst.outfile}_morphed_chunk.wav")
 

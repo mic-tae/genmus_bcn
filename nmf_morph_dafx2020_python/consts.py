@@ -5,6 +5,7 @@ from untwist.untwist.hpss import MedianFilterHPSS
 # general settings
 use_fast_morph = True  # for transitions from A to B. standard: True
 use_sigmoid_fade = True  # "fades" the transitions (slow start, fast middle, slow end). standard: True
+morph_time = 3  # transition time in seconds. standard: 3
 use_librosa = False  # standard: False
 
 # FFT and morph parameters
@@ -29,17 +30,17 @@ hpss = MedianFilterHPSS(hLength, pLength)
 #tgt = "../audio/02_cut.wav"
 #outfile = "../audio/0102cut"
 
-#src = "../audio/0_120_cut.wav"
-#tgt = "../audio/1_125_cut.wav"
-#outfile = "../audio/120125cut"
+src = "../audio/0_120.wav"
+tgt = "../audio/1_125.wav"
+outfile = "../audio/120125_test"
 
-#src = "../audio/00piano_cut.wav"
-#tgt = "../audio/01trumpet_cut_resampled.wav"
-#outfile = "../audio/0001_cut_test"
+#src = "audio/00piano.wav"
+#tgt = "audio/01trumpet.wav"
+#outfile = "audio/0001_test"
 
-src = "audio/test/house120.mp3"
-tgt = "audio/test/lofi70.mp3"
-outfile = "audio/test/test__houselofi"
+#src = "audio/test/house120.mp3"
+#tgt = "audio/test/lofi70.mp3"
+#outfile = "audio/test/test__houselofi"
 
 #src = "../audio/1_moretest125.wav"
 #tgt = "../audio/2_moretest120.wav"
